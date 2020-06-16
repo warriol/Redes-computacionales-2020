@@ -1,6 +1,15 @@
-// FIng/CETP - Tecnologo en Informatica
-// Redes - Servidor de Autenticacion
+// Redes de Computadoras
+// Tecnologo en Informatica FIng - CETP
 //
+// Taller 3  - Programacion con Sockets TCP
+
+// Integrantes del equipo 05
+//
+// Wilson Arriola		- 4.379.180-6
+// Juan Manuel Cerdá	- 5.141.078-9
+// Gonzalo Frascheri	- 4.975.732-1
+// Manuel Biurrun		- 5.346.301-7
+// Juan Sebastián Ugas	- 6.287.016-0
 
 
 using namespace std;
@@ -14,44 +23,44 @@ using namespace std;
 #include <iostream>
 #include <fstream>
 #include <string.h>
-#include <arpa/inet.h> // para inet_Addr, etc
-#include <netdb.h> // estrucrutas
+#include <arpa/inet.h>							// para inet_Addr, etc
+#include <netdb.h>								// estrucrutas
 #include <stdlib.h>
 #include <dirent.h>
-#include <sys/stat.h> 
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <sys/signal.h>
-#include <ctype.h> 
+#include <ctype.h>
 
-#define BACKLOG 2	// El numero de conexiones permitidas
-#define MAX_LARGO_MENSAJE 255	// definicion por letra
+#define BACKLOG 2								// El numero de conexiones permitidas
+#define MAX_LARGO_MENSAJE 255					// definicion por letra
 
-//VARIABLES GLOBALES
-int fd,fd2;
+// variables globales------------------------------------------------------------------
+int fd1;										// File Descriptor Socket del servidor
+int fd2;										// File Descriptor del socket luego de Accept
 
-//ListaPid listaPid; 			//lista con los pids de los hijos
-char * nombre = new (char[75]);		// para acordarse del usuario despues de una orden user
+//ListaPid listaPid; 							// lista con los pids de los hijos
+//char * nombre = new (char[75]);					// para acordarse del usuario despues de una orden user
 
-//***** FUNCIONES AUXILIARES **********
-void resetString (char * & s)
-// Resetea un string.
+// funciones---------------------------------------------------------------------------
+void resetString (char * & s)					// Resetea un string.
 {
 	s[0] = '\0';
 }
 
-void leerCedula(char * & buffer, char * & cedula)
+void leerIdentificador(char * & buffer, char * & cedula)
 // lee una cedula
 {
 	strncpy (cedula, buffer, strlen(buffer));
 	cedula[strlen(buffer)] = '\0';
 }
 
-void leerComando(char * & buffer, char * & comando)
+/*void leerComando(char * & buffer, char * & comando)
 // lee un comando
 {
 	strncpy (comando, buffer, strlen(buffer));
 	comando[strlen(buffer)] = '\0';
-}
+}*/
 
 char * agregarCero(char * cad,int num)
 // Chequea si el num es < 10 y me devuelve un string con el '0'
@@ -113,14 +122,13 @@ char * getTiempo()
 void enviar (int descriptor, char * cadena, char * ipport)
 // Envia una cadena por un socket, e imprime en la salida estandar.
 {
-	send(descriptor, cadena, strlen(cadena),0); 
+	send(descriptor, cadena, strlen(cadena),0);
 	cout << "\33[31m[\33[00m" << getTiempo() << "\33[31m-\33[00m" << ipport << "\33[36m>" << cadena << "\33[00m";
 }
 
 
 ////////-------------------------------------------------------------- AUTENTICACION
-bool alumno(char * alumno, char * & sede)
-// Devuelve los datos de un alumno
+bool autenticacion(char * autenticacion, char * & sede)
 {
 	FILE * archivo;
 	bool retorno = false;
@@ -131,7 +139,7 @@ bool alumno(char * alumno, char * & sede)
 	linea[0] = '\0';
 	char * usps = new (char[255]);
 	usps[0] = '\0';
-	strcat (usps, alumno);
+	strcat (usps, autenticacion);
 	strcat (usps, ";");
 	if (!(archivo == NULL))
 	{
@@ -168,7 +176,7 @@ void manejadorHijo(int signal)
  // Manejador de las senhales del hijo.
 {
 	if (signal == SIGINT){
-		cout << "\33[46m\33[31m[" << getpid() << "]" << " SIGINT CTRL+C recibido\33[00m\n"; 
+		cout << "\33[46m\33[31m[" << getpid() << "]" << " SIGINT CTRL+C recibido\33[00m\n";
 	}
 	if (signal == SIGTERM){
 		cout << "\33[46m\33[31m[" << getpid() << "]" << " SIGTERM Terminacion de programa\33[00m\n";
@@ -183,7 +191,7 @@ void manejadorHijo(int signal)
 		cout << "\33[46m\33[31m[" << getpid() << "]" << " SIGALRM Timeout excedido \33[00m\n";
 	}
 	close(fd2);
-	close(fd);
+	close(fd1);
 	exit(1);
 }
 
@@ -191,7 +199,7 @@ void manejadorPadre (int signal)
 // Manejador de las senhales del padre.
 {
 	if (signal == SIGINT){
-		cout << "\33[46m\33[31m[" << getpid() << "]" << " SIGINT CTRL+C recibido\33[00m\n"; 
+		cout << "\33[46m\33[31m[" << getpid() << "]" << " SIGINT CTRL+C recibido\33[00m\n";
 	}
 	if (signal == SIGTERM){
 		cout << "\33[46m\33[31m[" << getpid() << "]" << " SIGTERM Terminacion de programa\33[00m\n";
@@ -209,13 +217,13 @@ void manejadorPadre (int signal)
 		cout << "\33[46m\33[31m[" << getpid() << "]" << " SIGPIPE \33[00m\n";
 	}
 	close(fd2);
-	close(fd); 
+	close(fd1);
 	exit(1);
-	
+
 }
 
-//************ MAIN ***************
 //*********************************
+//************ MAIN ***************
 //*********************************
 int main(int argc, char * argv[])
 // argv[1] = puerto
@@ -224,7 +232,7 @@ int main(int argc, char * argv[])
  	struct sigaction sa;
 	memset (&sa, 0, sizeof (sa));
 	sa.sa_handler = &manejadorPadre;
-	
+
 	struct sigaction sb;//////////////////////
 	memset (&sb, 0, sizeof (sb));/////////////
 	sb.sa_handler = &manejadorHijo;///////////
@@ -234,11 +242,11 @@ int main(int argc, char * argv[])
 	sigaction(SIGSEGV, &sa, NULL);
 	signal(SIGALRM, SIG_IGN);
 
-	cout << "\n\n\t>> \33[34mAutenticacion Redes \33[00m<<\n";
-	cout << "\t  ---------------------\n\n";
+	cout << "\n\n\t>> \33[34mAutenticacion Redes - Grupo 5 \33[00m<<\n";
+	cout << "\t  --------------------------------\n\n";
 	if (argc < 2)
 	{
-		cout << "\33[31mERROR:\33[00m Ingrese puerto\n\n";
+		cout << "\33[31mERROR:\33[00m Faltan argumentos: debe indicar el puerto donde se oirá.\n\n";
 		exit(-1);
 	}
 
@@ -246,69 +254,66 @@ int main(int argc, char * argv[])
 	//CREO ESTRUCTURAS Y VARIABLES
 	enum estados {esperando, autorizacion, transaccion, actualizacion};
 	estados estado = esperando;
-	struct sockaddr_in server;	// para la información de la dirección del servidor
-	struct sockaddr_in client;	// para la información de la dirección del cliente
-	socklen_t sin_size;		// Tamaño del socket, era un int,
-					// pero con g++ tuve que poner esta estructura
-	char buffer[MAX_LARGO_MENSAJE];		// buffer para almacenar lo que recibo
+	struct sockaddr_in server;							// para la información de la dirección del servidor
+	struct sockaddr_in client;							// para la información de la dirección del cliente
+	socklen_t sin_size;									// Tamaño del socket, era un int,
+														// pero con g++ tuve que poner esta estructura
+	char buffer[MAX_LARGO_MENSAJE];						// buffer para almacenar lo que recibo
 	char * todo;
-	char * comando = new (char[100]);	// el comando leido
-	char * nombre = new (char[100]);	// el nombre leido
-	char * sede = new (char[100]);		// la sede leida
-	char * palabra = new (char[100]);	// la palabra leida
-	char * argumento = new (char[100]);	// argumento del comando, puede ser mas de 1
-	char * mensaje = new (char[255]);	// mensaje
-	char * envio = new (char[255]);
+	char * comando = new (char[100]);					// el comando leido
+	//char * nombre = new (char[100]);					// el nombre leido
+	char * sede = new (char[100]);						// la sede leida
+	//char * palabra = new (char[100]);					// la palabra leida
+	char * argumento = new (char[100]);					// argumento del comando, puede ser mas de 1
+	char * mensaje = new (char[255]);					// mensaje
+	//char * envio = new (char[255]);
 	char * ipport = new(char[50]);
 	char * puerto = new(char[25]);
-	buffer[0] = '\0';			// resetString (buffer);
+	buffer[0] = '\0';									// resetString (buffer);
 	resetString (comando);
 	resetString (argumento);
-	resetString (nombre);
-	resetString (sede);	
-	resetString (palabra);
+	//resetString (nombre);
+	resetString (sede);
+	//resetString (palabra);
 	resetString (mensaje);
-	resetString (envio);
+	//resetString (envio);
 	resetString (ipport);
 	resetString (puerto);
-	int numbytes;			// cantidad de bytes recibidos en recv()
+	int numbytes;										// cantidad de bytes recibidos en recv()
 	int pidHijo;
 	int on=1;
-	int timeout = 45;	
+	int timeout = 45;
 	//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-	
-	// A continuacion la llamada a socket()
-	if ((fd=socket(AF_INET, SOCK_STREAM, 0)) == -1 )
+
+	// A continuacion la llamada a socket() --------------------------------------------------------------------------- PASO 1 LLAMO AL SOCKET
+	if ((fd1=socket(AF_INET, SOCK_STREAM, 0)) == -1 )
 	{
-		cout << "error en socket()\n";
+		cout << "\33[31mERROR:\33 Error en socket()\n";
 		exit(-1);
 	}
 
 	server.sin_family = AF_INET;
-	server.sin_port = htons(atoi(argv[1])/*PORT*/);	// htons() de la seccion "Conversiones"
-		//if ((strcmp(argv[1], "localhost") == 0) || (strcmp(argv[1], "LOCALHOST") == 0))
-	//	inet_aton("127.0.0.1", &server.sin_addr);
-	//else
-	//	inet_aton(argv[1], &server.sin_addr);
-	//INADDR_ANY coloca nuestra direccion IP automaticamente
-	server.sin_addr.s_addr = INADDR_ANY;		
-	bzero(&(server.sin_zero),8); 			// escribimos ceros en el resto de la estructura
+	server.sin_port = htons(atoi(argv[1])/*PORT*/);		// htons() de la seccion "Conversiones"
+	///<<<<<<<<<<<<<<<<<<< modificar para que la direccion de servidor sea la que envian al iniciarlo
+	server.sin_addr.s_addr = INADDR_ANY;				// INADDR_ANY coloca nuestra direccion IP automaticamente
+	bzero(&(server.sin_zero),8); 						// escribimos ceros en el resto de la estructura
 
 	//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
  	//libera el socket inmediatamente para ser reutilizado
-	setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char*) &on, sizeof(on));
+	setsockopt(fd1, SOL_SOCKET, SO_REUSEADDR, (char*) &on, sizeof(on));
 	//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 
-	// A continuacion la llamada a bind()
-	if(bind(fd,(struct sockaddr*)&server, sizeof(struct sockaddr))==-1)
+	// A continuacion la llamada a bind() ----------------------------------------------------------------------------- PASO 2 LLAMO AL BIND
+	if(bind(fd1,(struct sockaddr*)&server, sizeof(struct sockaddr))==-1)
 	{
-		cout << "error en bind() \n";
+		cout << "\33[31mERROR:\33 Error en bind() \n";
 		exit(-1);
 	}
-	if(listen(fd,BACKLOG) == -1)	// llamada a listen()
+	// llamada a listen() --------------------------------------------------------------------------------------------- PASO 3 LLAMO AL LISTEN
+	if(listen(fd1,BACKLOG) == -1)
 	{
-		cout << "error en listen()\n";
+		cout << "\33[31mERROR:\33 Error en listen()\n";
 		exit(-1);
 	}
 
@@ -319,68 +324,59 @@ int main(int argc, char * argv[])
 		if (estado == esperando)
 		{
 			//cout << "Esperando....\n";
-
-//cout << "1\n";
-
-
-
-
-
-			//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+			//cout << "1\n";
+			//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 			sin_size = sizeof(struct sockaddr_in);
-			// A continuacion la llamada a accept()
-			if ((fd2 = accept(fd,(struct sockaddr *)&client, &sin_size))==-1)
+			// A continuacion la llamada a accept() ------------------------------------------------------------------- PASO 4 LLAMO AL ACCEPT
+			if ((fd2 = accept(fd1,(struct sockaddr *)&client, &sin_size))==-1)
 			{
-				cout << "error en accept()\n";
+				cout << "\33[31mERROR:\33 Error en accept()\n";
 				exit(-1);
 			}
 			//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 			//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 			//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 			//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
-
-
 			//cout << "Se obtuvo una conexion desde "<< inet_ntoa(client.sin_addr) << " \n";
 			//obtengo [IP:PUERTO]
 			resetString(ipport);
-//cout << "2\n";			
+			//cout << "2\n";
 			sprintf(puerto,"%d", client.sin_port);
-//cout << puerto << "\n";
-//cout << "3\n";			
+			//cout << puerto << "\n";
+			//cout << "3\n";
 			strcat(strcat(strcat(strcat(strcat (ipport, /*"\33[31m[\33[34m"*/""), inet_ntoa(client.sin_addr)), "\33[00m:"), puerto), "\33[31m]\33[00m ");
-//cout << "4\n";
-//client.sin_addr;
-//	strcat(strcat(strcat(strcat(strcat (ipport, "["), inet_ntoa(client.sin_addr)), ":"), argv[2]), "]\t");
-//sprintf(cantmensajes,"%d",cantarch);
+			//cout << "4\n";
+			//client.sin_addr;
+			//	strcat(strcat(strcat(strcat(strcat (ipport, "["), inet_ntoa(client.sin_addr)), ":"), argv[2]), "]\t");
+			//sprintf(cantmensajes,"%d",cantarch);
 			enviar (fd2, "Redes 2020 - Taller 3 - Autenticacion de Usuarios\r\n", ipport);
 			estado = autorizacion;
 			pidHijo = fork(); // ******** FORK *************
-	
+
 		}
 		if ( pidHijo < 0 )
 		{
-			cout << "Error en fork() \n" ;
+			cout << "\33[31mERROR:\33 Error en fork() \n" ;
 			exit(-1);
 		}
 		if( pidHijo > 0 )
 		{ //PROCESO PADRE
-			
+
 			estado = esperando;
-//			cout << "Soy Papucho: " << getpid() << " fd: " << fd << "  fd2:" << fd2 << "\n";
+//			cout << "Soy Papucho: " << getpid() << " fd1: " << fd1 << "  fd2:" << fd2 << "\n";
 //			InsertarListaPid (listaPid, pidHijo);
 //			cout << "Lista de hijos: \n";
 //			ImprimirListaPid (listaPid);
 
 			//******* manejo de señales *********
-			//sigaction(SIGCHLD, &sa, NULL); 
+			//sigaction(SIGCHLD, &sa, NULL);
 			signal(SIGCHLD,SIG_IGN);
 			close(fd2);
 
 		}
 		if( pidHijo == 0)
 		{//PROCESO HIJO
-			//cout << "Soy el hijo " << getpid() << " fd: " << fd << "  fd2:" << fd2 << "\n";
+			//cout << "Soy el hijo " << getpid() << " fd1: " << fd1 << "  fd2:" << fd2 << "\n";
 			sigaction(SIGINT, &sb, NULL);
 			sigaction(SIGTERM, &sb, NULL);
 			sigaction(SIGPIPE, &sb, NULL);
@@ -398,21 +394,21 @@ int main(int argc, char * argv[])
 					buffer[0] = '\0';
 					if ((numbytes=recv(fd2,&buffer,100,0)) == -1)
 					{
-						printf("Error en recv() \n");
+						printf("\33[31mERROR:\33 Error en recv() \n");
 						exit(-1);
 					}
 					buffer[numbytes-2] = '\0';
 					//***RESET TIMER
-					alarm(0); 
+					alarm(0);
 					alarm(timeout);
 					//***
 					// imprime el comando leido en la salida estandar
 					cout << "\33[31m[\33[00m" << getTiempo() << "\33[31m-\33[00m" << ipport << "\33[33m<" << buffer << "\33[00m\n";
 					todo = buffer;
-					leerCedula(todo, comando);
+					leerIdentificador(todo, comando);
 					resetString(sede);
 					//cout << "comando leido: \"" << comando << "\"\n";
-					if (alumno (comando, sede))
+					if (autenticacion (comando, sede))
 					{
 						resetString (mensaje);
 						strcat(mensaje, "SI\r\n");
@@ -438,9 +434,9 @@ int main(int argc, char * argv[])
 			if (estado == actualizacion)
 			{
 				//cout << "Actualizacion....\n";
-				close(fd2);	
-				close(fd);
-				exit(0); 		
+				close(fd2);
+				close(fd1);
+				exit(0);
 			}
 		}//el del else PROCESO HIJO
 	}//el del while
